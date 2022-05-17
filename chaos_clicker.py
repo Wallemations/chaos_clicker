@@ -29,8 +29,8 @@ buyamount = 1
 decide_ascend_timer = 0
 # Our ascensions, measured in Memories.
 memories = 1
-# Total total punches.
-total_total_punches = 0
+# Punches made throughout your entire playtime. Currently no real use to it.
+lifetime_punches = 0
 # Are tooltips currently active?
 tooltips_active = False
 # Is the ascend verifier active?
@@ -41,42 +41,46 @@ memories_updated = False
 chaos_healthbar_loaded = False
 # have we set the UI up?
 finished_setup = False
-# Current hatred level. Can't go above 100.
+# Current hatred level.
 hatred = 0
+# Total possible hatred, increases with memories
+max_hatred = 100
 
 # Updates the UI text with current punches & resets the shop tooltips
 def uiPrint():
     global punches
     global chaos_health
     global tooltips_active
-    global ascend_button_active
     global chaos_healthbar_loaded
     global enable_loop
     global finished_setup
     global hatred
+    global memories
+    global memories_updated
     
     if not enable_loop:
         return
     
     if not finished_setup:
         updatePPS()
-        
+    
     # Punch counter
     visual_punches = "{:.5e}".format(round(punches)) if punches > 9999999 else round(punches)
-    punchCounter.config(text = f"Chaos punched {visual_punches} times.")
+    punchCounter.config(text = f"Punched {visual_punches} times.")
     
     #Chaos healthbar
-    chaos_health = chaos_maxhealth - total_punches
+    chaos_health = round(chaos_maxhealth - int(total_punches))
+    # To save on computing power, only change chaos' HP if it's a value we'd visually see.
     if total_punches >= (10**14) or not chaos_healthbar_loaded:
         if (chaos_health > 0):
-            visual_chaoshp = "{:.3e}".format(chaos_health) if chaos_health > 9999 else round(chaos_health)
+            # Turn into scientific notation if it's over 9999
+            visual_chaoshp = "{:.3e}".format(chaos_health) if chaos_health > 9999 else chaos_health
             visual_chaosmax = "{:.3e}".format(chaos_maxhealth)
             chaosHealth.config(text = f"Chaos HP: {visual_chaoshp} / {visual_chaosmax}")
         else:
-            chaosHealth.config(text = f"You beat Chaos' corpse {round(-chaos_health)} times.")
-            if(decide_ascend_timer <= 0) and ascend_button_active:
-                ascendButton.config(text="Ascend", bg="#494893", activebackground="#6665b0")
-                ascend_button_active = False
+            chaosHealth.config(text = f"You beat Chaos' corpse {-chaos_health} times.")
+            display_ascension_button()
+        
         if not chaos_healthbar_loaded:
             chaos_healthbar_loaded = True
     
@@ -101,6 +105,13 @@ def uiPrint():
     if(tooltips_left <= 0) and tooltips_active:
         loadtip.config(text = "??", fg="#1e1e1e")
         tooltips_active = False
+
+def display_ascension_button():
+    global ascend_button_active
+    global decide_ascend_timer
+    if(decide_ascend_timer <= 0) and ascend_button_active:
+                ascendButton.config(text="Ascend", bg="#494893", activebackground="#6665b0")
+                ascend_button_active = False
 
 def updatePPS():
     visual_ppc = "{:.3e}".format(calc_button_punches()) if calc_button_punches() > 9999 else round(calc_button_punches())
@@ -150,45 +161,45 @@ def toggleMultibuy():
 
 # Punch chaos!!!  
 def calc_button_punches():
-    global memories
     global enable_loop
     
     if not enable_loop:
         return
-    return ((memories + knuckles.levels) * cutscenes.levels)
+    return (1 + knuckles.levels) * cutscenes.levels
 
 # Punch chaos AUTOMATICALLY.
 def calc_auto_punch(time_dialation):
-    global memories
     global enable_loop
     
     if not enable_loop:
         return
-    return ((albums.levels * ((0.25 * memories) + (iphone.levels * 0.25))) * fucks_not_given.levels) * time_dialation
+    return ((albums.levels * (0.25 + (iphone.levels * 0.25))) * fucks_not_given.levels) * time_dialation
 
 # Button to punch chaos.
-def buttonCommand():
+def player_punch_command():
     global punches
     global cutscenes
     global total_punches
-    global total_total_punches
+    global lifetime_punches
     global hatred
+    global memories
+    global max_hatred
     # Hatred increases punches gained by 1% per point
-    manual_punches = calc_button_punches() * (1 + (hatred/100))
+    manual_punches = (calc_button_punches() * memories) * (1 + (hatred/100))
     punches += manual_punches
     total_punches += manual_punches
-    total_total_punches += manual_punches
+    lifetime_punches += manual_punches
     # Increase our hatred
-    if(hatred < 100):
+    if(hatred < max_hatred):
         hatred += 3.5
     
 # Ends the game and prints your current punches
 def endGame():
     global enable_loop
     global punches
-    global total_total_punches
+    global lifetime_punches
     enable_loop = False
-#    print(f"You've ended the game with {round(total_total_punches)} total punches!")
+#    print(f"You've ended the game with {round(lifetime_punches)} total punches!")
 
 # Attempt to ascend
 def ascendAttempt():
@@ -198,6 +209,7 @@ def ascendAttempt():
     global memories
     global ascend_button_active
     global memories_updated
+    global max_hatred
     
     if chaos_health >=1:
         return
@@ -207,6 +219,7 @@ def ascendAttempt():
         chaos_health = chaos_maxhealth
         memories += crystals.levels
         ascendButton.config(text="Ascend")
+        max_hatred = (100 * memories) * 0.75
         ascend_button_active = False
         memories_updated = False
         return
@@ -223,11 +236,13 @@ def ResetValues():
     global total_punches
     global tooltips_left
     global tooltips_active
+    global chaos_healthbar_loaded
     
     total_punches = 0
     punches = 0
     tooltips_left = 2
     tooltips_active = True
+    chaos_healthbar_loaded = False
     for item in shops:
         if not item.ascension_proof:
             item.cost = item.initial_cost
@@ -241,13 +256,13 @@ def saveGame():
     global punches
     global chaos_maxhealth
     global memories
-    global total_total_punches
+    global lifetime_punches
     with open('chaos_savefile.txt', 'w') as file:
         file.write(f"{round(total_punches)}" + "\n")
         file.write(f"{round(punches)}" + "\n")
         file.write(f"{round(chaos_maxhealth)}" + "\n")
         file.write(f"{round(memories)}" + "\n")
-        file.write(f"{round(total_total_punches)}" + "\n")
+        file.write(f"{round(lifetime_punches)}" + "\n")
         for item in shops:
             file.write(f"{item.name},{item.levels}" + "\n")
 
@@ -257,28 +272,42 @@ def loadGame():
     global punches
     global chaos_maxhealth
     global memories
-    global total_total_punches
+    global lifetime_punches
     global memories_updated
     global tooltips_left
+    global max_hatred
     
     if(os.path.exists('chaos_savefile.txt')):
         with open('chaos_savefile.txt', 'r') as file:
+            # Split the save data into lines
             total_save_data = file.read().splitlines()
+            # Line one is total punches this ascension, used to calculate damage done to chaos
             total_punches = int(total_save_data[0])
+            # Line two is our punches, as in currency
             punches = int(total_save_data[1])
+            # Line three is chaos' maximum health
             chaos_maxhealth = int(total_save_data[2])
+            # Line four is our current number of memories
             memories = int(total_save_data[3])
-            total_total_punches = int(total_save_data[4])
+            # Line five is the total amount of punches we've done throughout our entire game
+            lifetime_punches = int(total_save_data[4])
             for line in total_save_data:
                 if "," in line:
+                    # Split into name and number
                     my_data = line.split(",")
                     for item in shops:
+                        # If the name of a shop item matches the name of the data
                         if item.name == my_data[0]:
+                            # If the amount of items in the file is more than 0
                             if int(my_data[1]) != 0:
-                                item.cost = round(item.cost * (1.2 * int(my_data[1])))
+                                # Increase the cost of each item
+                                item.cost = item.initial_cost
+                                for i in range(int(my_data[1])):
+                                    item.cost = round(item.cost * 1.2)
                             item.levels = int(my_data[1])
             # Show ascensions button if already used
             if memories >= 2:
+                max_hatred = (100 * memories) * 0.75
                 memories_updated = False
                 ascendButton.config(text="Ascend", bg="#494893", activebackground="#6665b0")
                          
@@ -289,7 +318,7 @@ def loadGame():
 def auto_punch_calculation(delta_time):
     global punches
     global total_punches
-    global total_total_punches
+    global lifetime_punches
     
     auto_punch_increase = 0
     if(albums.levels >= 1):
@@ -298,7 +327,7 @@ def auto_punch_calculation(delta_time):
         auto_punch_increase += (calc_button_punches() * delta_time) * (1 + (hatred/100))
     punches += auto_punch_increase
     total_punches += auto_punch_increase
-    total_total_punches += auto_punch_increase
+    lifetime_punches += auto_punch_increase
 
 # Builds the visuals
 
@@ -314,7 +343,7 @@ punchCounter.pack()
 ppcLabel = Label(master, text = "Loading!", fg="red", bg="#1e1e1e")
 ppcLabel.pack()
 
-mainClickButton = Button(master, text="Punch Chaos!", command = buttonCommand, bg = "#7c1e1e", font=(15), fg="white", activebackground="#a93131", activeforeground="white")
+mainClickButton = Button(master, text="Punch Chaos!", command = player_punch_command, bg = "#7c1e1e", font=(15), fg="white", activebackground="#a93131", activeforeground="white")
 mainClickButton.pack()
 
 # Stronger Knuckles
@@ -464,6 +493,7 @@ class Upgrade:
         self.LONG_TOOLTIP = 100
         self.SHORT_TOOLTIP = 50
         self.current_tooltip = 0
+        
     
     # Checks if the player has enough punches to buy it. If they do, deduct those punches from their account,
     # increase the levels of the upgrade. Checks buyamount to see if they want to purchase more than one at once.
@@ -569,7 +599,7 @@ def game_main_loop():
     global tooltips_left
     global total_punches
     global decide_ascend_timer
-    global total_total_punches
+    global lifetime_punches
     global hatred
     
     before_time = time.time()
