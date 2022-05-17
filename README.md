@@ -1,6 +1,6 @@
 # Chaos Killer
 
-## V. 0.3.1
+## V. 0.3.2
 
 An incremental Jack Garland simulator.
 
