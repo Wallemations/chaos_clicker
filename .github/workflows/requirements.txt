@@ -1,0 +1,2 @@
+# things that the python application on git needs to install to test the game
+tkinter
