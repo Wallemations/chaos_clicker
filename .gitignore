@@ -2,3 +2,4 @@ build/*
 chaos_clicker.spec
 __pycache__/*
 chaos_savefile.txt
+.github/workflows/*
