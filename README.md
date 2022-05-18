@@ -1,4 +1,4 @@
-# Chaos Killer
+# Chaos Clicker
 
 ## V. 0.3.2
 
